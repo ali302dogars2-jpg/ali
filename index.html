@@ -95,6 +95,37 @@ input {
   overflow-y:auto;
 }
 
+.stats {
+  background:#111827;
+  padding:12px;
+  border-radius:12px;
+  border:1px solid #1f2937;
+  margin-bottom:12px;
+  font-size:0.85rem;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+
+.stat-item {
+  background:#020617;
+  padding:8px;
+  border-radius:8px;
+  text-align:center;
+}
+
+.stat-label {
+  color:#9ca3af;
+  font-size:0.75rem;
+  margin-bottom:3px;
+}
+
+.stat-value {
+  color:#3b82f6;
+  font-weight:600;
+  font-size:1.1rem;
+}
+
 </style>
 </head>
 <body>
@@ -104,6 +135,25 @@ input {
 
 <h1>Multi Bot Auto OTP Sender</h1>
 <div class="sub">Screenshot-Style Telegram Message + Inline Button</div>
+
+<div id="stats" class="stats" style="display:none;">
+  <div class="stat-item">
+    <div class="stat-label">📤 SENT</div>
+    <div class="stat-value" id="sentCount">0</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">❌ FAILED</div>
+    <div class="stat-value" id="failedCount">0</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">⏱️ NEXT IN</div>
+    <div class="stat-value" id="nextIn">10s</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">🤖 ACTIVE BOT</div>
+    <div class="stat-value" id="activeBotId">-</div>
+  </div>
+</div>
 
 <div id="botContainer" class="bot-container"></div>
 
@@ -120,6 +170,8 @@ input {
 let intervalId=null;
 let botCounter=1;
 let bots=[];
+let stats={sent:0,failed:0};
+let countdownInterval=null;
 
 const countries=[
   {name:"Nigeria",code:"+234",flag:"🇳🇬"},
@@ -220,8 +272,20 @@ function startAuto(){
     return;
   }
 
+  stats={sent:0,failed:0};
+  document.getElementById("stats").style.display="grid";
   document.getElementById("status").innerHTML="Started!";
   let index=0;
+  let countdown=10;
+
+  const updateCountdown=()=>{
+    document.getElementById("nextIn").innerHTML=countdown+"s";
+    countdown--;
+    if(countdown<0) countdown=10;
+  };
+
+  updateCountdown();
+  countdownInterval=setInterval(updateCountdown,1000);
 
   intervalId=setInterval(()=>{
 
@@ -231,12 +295,11 @@ function startAuto(){
     const otp=genOtp();
     const phone=genPhone(country);
 
-    const fullMsg=`Your WhatsApp code ${otp}
+    const fullMsg=`Your ${service.name} code ${otp}
 Dont share this code with others`;
 
-    // 🔥 EXACT SCREENSHOT-STYLE MESSAGE 🔥
     const text =
-`📱 *Whatsapp ${country.name}${country.flag}*
+`📱 *${service.name} ${country.name}${country.flag}*
 *MESSAGE RECEIVED!*
 
 ⏰ *Time:* \`${new Date().toISOString().slice(0,19).replace("T"," ")}\`
@@ -263,8 +326,19 @@ ${fullMsg}
 بس! اسی شوق نے ہمیں آوارہ بنا دیا ❤️
 `;
 
-    sendToTelegram(bot,text);
+    sendToTelegram(bot,text).then(r=>{
+      if(r.ok) stats.sent++;
+      else stats.failed++;
+      document.getElementById("sentCount").innerHTML=stats.sent;
+      document.getElementById("failedCount").innerHTML=stats.failed;
+    }).catch(()=>{
+      stats.failed++;
+      document.getElementById("failedCount").innerHTML=stats.failed;
+    });
+
+    document.getElementById("activeBotId").innerHTML=bot.label;
     index=(index+1)%valid.length;
+    countdown=10;
 
   },10000);
 }
@@ -272,6 +346,8 @@ ${fullMsg}
 function stopAuto(){
   clearInterval(intervalId);
   intervalId=null;
+  clearInterval(countdownInterval);
+  countdownInterval=null;
   document.getElementById("status").innerHTML="Stopped.";
 }
 
