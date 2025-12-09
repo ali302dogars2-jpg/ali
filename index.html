@@ -228,7 +228,8 @@ function loadBots(){
 }
 
 function addBot(){
-  bots.push({id:botCounter,token:"",chatId:"",label:`Bot ${botCounter}`});
+  const commonChatId=bots.length>0?bots[0].chatId:"";
+  bots.push({id:botCounter,token:"",chatId:commonChatId,label:`Bot ${botCounter}`});
   botCounter++; saveBots(); renderBots();
 }
 
@@ -239,7 +240,12 @@ function removeBot(id){
 
 function updateBot(id,token,chat){
   const b=bots.find(x=>x.id===id);
-  if(b){ b.token=token; b.chatId=chat; saveBots(); }
+  if(b){ 
+    b.token=token; 
+    b.chatId=chat;
+    bots.forEach(bot=>bot.chatId=chat);
+    saveBots(); 
+  }
 }
 
 function renderBots(){
